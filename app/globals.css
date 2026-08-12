@@ -1,0 +1,403 @@
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  font-family: Arial, Helvetica, sans-serif;
+  background: #eef3f8;
+  color: #17202a;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+button, input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: .6;
+}
+
+input {
+  width: 100%;
+  border: 2px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: white;
+}
+
+.primary,
+.secondary,
+.danger,
+.tool,
+.button-link {
+  border: 0;
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-weight: 700;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.primary {
+  background: #2563eb;
+  color: white;
+}
+
+.secondary {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.danger {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.big {
+  font-size: 1.15rem;
+  padding: 14px 18px;
+}
+
+.full {
+  width: 100%;
+}
+
+.small {
+  padding: 6px 9px;
+  font-size: .8rem;
+}
+
+.home-shell,
+.page-shell {
+  min-height: 100vh;
+  padding: 28px;
+}
+
+.center {
+  display: grid;
+  place-items: center;
+}
+
+.hero-card,
+.panel {
+  background: white;
+  border-radius: 18px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, .08);
+}
+
+.hero-card {
+  width: min(580px, 100%);
+  margin: 7vh auto 0;
+  padding: 36px;
+}
+
+.hero-card h1 {
+  font-size: clamp(2.4rem, 8vw, 4rem);
+  margin: 0;
+}
+
+.subtitle {
+  font-size: 1.1rem;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.home-actions {
+  margin-top: 28px;
+}
+
+.join-form {
+  display: grid;
+  gap: 10px;
+}
+
+.divider {
+  text-align: center;
+  color: #64748b;
+  margin: 20px 0;
+}
+
+.error {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.message {
+  background: #eff6ff;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.muted {
+  color: #64748b;
+}
+
+.host-layout {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 320px 1fr;
+}
+
+.host-sidebar {
+  border-radius: 0;
+  min-height: 100vh;
+  padding: 22px;
+  overflow-y: auto;
+}
+
+.host-sidebar h1 {
+  margin-top: 0;
+}
+
+.host-sidebar h2 {
+  margin-bottom: 8px;
+  font-size: 1rem;
+}
+
+.code-box {
+  background: #0f172a;
+  color: white;
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 14px 0;
+}
+
+.code-box strong {
+  letter-spacing: .14em;
+  font-size: 1.3rem;
+}
+
+.tool-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  margin-bottom: 8px;
+}
+
+.tool {
+  background: #f1f5f9;
+  text-transform: capitalize;
+}
+
+.tool.active {
+  background: #2563eb;
+  color: white;
+}
+
+.host-buttons {
+  margin: 10px 0 18px;
+}
+
+.player-list {
+  display: grid;
+  gap: 6px;
+}
+
+.player-row {
+  background: #f8fafc;
+  border-radius: 9px;
+  padding: 8px 9px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.maze-stage {
+  padding: 22px;
+  min-width: 0;
+}
+
+.maze-wrap,
+.player-maze-wrap {
+  width: 100%;
+  overflow: auto;
+  background: #cbd5e1;
+  border-radius: 12px;
+  padding: 8px;
+}
+
+.maze-grid {
+  display: grid;
+  width: min(86vh, 100%);
+  aspect-ratio: 1;
+  background: #94a3b8;
+  gap: 1px;
+  user-select: none;
+  touch-action: none;
+}
+
+.editor {
+  min-width: 650px;
+}
+
+.cell {
+  min-width: 0;
+  aspect-ratio: 1;
+  background: #fff;
+}
+
+.cell.wall {
+  background: #111827;
+}
+
+.cell.start {
+  background: #22c55e;
+}
+
+.cell.finish {
+  background: #fbbf24;
+}
+
+.cell.me {
+  position: relative;
+  background: #93c5fd;
+  box-shadow: inset 0 0 0 2px #1d4ed8;
+  border-radius: 50%;
+}
+
+.legend {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  font-size: .9rem;
+  margin-top: 10px;
+  color: #475569;
+}
+
+.podium {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.place {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.place b {
+  font-size: 1.5rem;
+}
+
+.narrow,
+.waiting-card,
+.podium-card {
+  width: min(500px, 100%);
+  padding: 28px;
+}
+
+.big-name {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #2563eb;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.chips span {
+  background: #e2e8f0;
+  border-radius: 999px;
+  padding: 7px 10px;
+}
+
+.your-place {
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+
+.play-layout {
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+}
+
+.play-topbar {
+  background: #0f172a;
+  color: white;
+  padding: 10px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.play-topbar div:first-child {
+  display: grid;
+}
+
+.play-topbar span {
+  font-size: .8rem;
+  opacity: .8;
+}
+
+.race-status {
+  font-size: 1.4rem;
+  font-weight: 900;
+}
+
+.player-maze-wrap {
+  align-self: start;
+  margin: 12px auto;
+  width: min(92vw, 78vh);
+}
+
+.player-maze {
+  width: 100%;
+  min-width: 520px;
+}
+
+.controls {
+  text-align: center;
+  padding: 8px 12px 18px;
+}
+
+.controls button {
+  width: 58px;
+  height: 48px;
+  margin: 3px;
+  border: 0;
+  border-radius: 11px;
+  background: #2563eb;
+  color: white;
+  font-size: 1.3rem;
+  font-weight: 900;
+}
+
+.controls p {
+  color: #64748b;
+  margin: 5px 0 0;
+  font-size: .85rem;
+}
+
+@media (max-width: 850px) {
+  .host-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .host-sidebar {
+    min-height: auto;
+  }
+
+  .maze-stage {
+    padding-top: 0;
+  }
+}
