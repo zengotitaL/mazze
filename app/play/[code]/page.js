@@ -1,11 +1,11 @@
 "use client";
 
-import { use, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../../lib/supabase";
 import { SIZE, canMove } from "../../../lib/maze";
 
 export default function PlayPage({ params }) {
-  const { code } = use(params);
+  const { code } = params;
   const [game, setGame] = useState(null);
   const [player, setPlayer] = useState(null);
   const [players, setPlayers] = useState([]);
