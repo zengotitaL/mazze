@@ -5,7 +5,7 @@ import { supabase } from "../../../lib/supabase";
 import { SIZE, hasPath, makeEmptyMaze } from "../../../lib/maze";
 
 export default function HostPage({ params }) {
-  const { id } = use(params);
+  const { id } = params;
   const [game, setGame] = useState(null);
   const [players, setPlayers] = useState([]);
   const [tool, setTool] = useState("wall");
