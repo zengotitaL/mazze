@@ -48,8 +48,9 @@ export default function PlayPage({ params }) {
     return () => supabase.removeChannel(channel);
   }, [game?.id]);
 
-  // A reliable backup check for kicks. Realtime is fast when available,
-  // but this also removes a kicked player within a couple of seconds.
+  // A reliable backup check for kicks. During the race we deliberately do
+  // NOT pull x/y back from Supabase. The browser owns the local position so
+  // an older realtime/database response cannot make the player jump backward.
   useEffect(() => {
     if (!game || !player) return;
 
@@ -59,7 +60,7 @@ export default function PlayPage({ params }) {
 
       const { data } = await supabase
         .from("players")
-        .select("*")
+        .select("id, finished_at, place")
         .eq("id", current.id)
         .eq("game_id", game.id)
         .maybeSingle();
@@ -67,7 +68,13 @@ export default function PlayPage({ params }) {
       if (!data) {
         handleRemovedPlayer();
       } else {
-        setPlayer(data);
+        const merged = {
+          ...current,
+          finished_at: data.finished_at,
+          place: data.place
+        };
+        playerRef.current = merged;
+        setPlayer(merged);
       }
     }, 2000);
 
@@ -185,7 +192,15 @@ export default function PlayPage({ params }) {
     if (current) {
       const updated = list.find((p) => p.id === current.id);
       if (updated) {
-        setPlayer(updated);
+        // While playing, preserve our locally controlled x/y. Supabase realtime
+        // can briefly return the previous square before returning the new one,
+        // which caused the visible down -> up -> down jitter.
+        const merged = game?.status === "playing"
+          ? { ...updated, x: current.x, y: current.y }
+          : updated;
+
+        playerRef.current = merged;
+        setPlayer(merged);
       } else {
         handleRemovedPlayer();
       }
@@ -240,22 +255,25 @@ export default function PlayPage({ params }) {
   }
 
   async function move(dx, dy) {
-    if (!player || !game || game.status !== "playing" || player.finished_at) return;
+    const current = playerRef.current;
+    if (!current || !game || game.status !== "playing" || current.finished_at) return;
 
-    const nx = player.x + dx;
-    const ny = player.y + dy;
+    const nx = current.x + dx;
+    const ny = current.y + dy;
 
     if (!canMove(game.maze, nx, ny)) return;
 
-    const nextPlayer = { ...player, x: nx, y: ny };
-    setPlayer(nextPlayer);
+    // Move immediately on screen. Using playerRef also means repeated key presses
+    // always start from the newest local square instead of a stale React render.
+    const nextPlayer = { ...current, x: nx, y: ny };
     playerRef.current = nextPlayer;
+    setPlayer(nextPlayer);
     revealAround(nx, ny);
 
     const { error } = await supabase
       .from("players")
       .update({ x: nx, y: ny })
-      .eq("id", player.id);
+      .eq("id", current.id);
 
     if (error) {
       setError("Your move could not be saved. Try again.");
