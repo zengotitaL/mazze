@@ -118,30 +118,19 @@ export default function HostPage({ params }) {
       })
       .eq("id", id);
 
-    setMessage("Race started!");
+    setMessage("Race started! The host maze is now hidden.");
   }
 
   async function kickPlayer(playerId) {
-    setMessage("");
-
-    const { data, error } = await supabase
-      .from("players")
-      .delete()
-      .eq("id", playerId)
-      .select("id");
+    const { error } = await supabase.from("players").delete().eq("id", playerId);
 
     if (error) {
       setMessage(`Could not kick player: ${error.message}`);
       return;
     }
 
-    if (!data?.length) {
-      setMessage("The player could not be removed. Check the Supabase delete policy.");
-      return;
-    }
-
     await loadPlayers();
-    setMessage("Player removed. They can rejoin with the game code.");
+    setMessage("Player removed. They can rejoin.");
   }
 
   async function resetGame() {
@@ -154,7 +143,8 @@ export default function HostPage({ params }) {
         finished_at: null
       })
       .eq("id", id);
-    setMessage("Game reset. You can edit the maze again.");
+
+    setMessage("Game reset. The maze is visible again.");
   }
 
   async function clearMaze() {
@@ -164,11 +154,17 @@ export default function HostPage({ params }) {
   }
 
   const podium = useMemo(
-    () => [...players].filter((p) => p.place).sort((a, b) => a.place - b.place).slice(0, 3),
+    () =>
+      [...players]
+        .filter((p) => p.place)
+        .sort((a, b) => a.place - b.place)
+        .slice(0, 3),
     [players]
   );
 
   if (!game) return <main className="page-shell"><p>Loading...</p></main>;
+
+  const hideHostMaze = game.status === "playing" || game.status === "finished";
 
   return (
     <main className="host-layout">
@@ -184,7 +180,7 @@ export default function HostPage({ params }) {
           Status: <b>{game.status}</b>
         </p>
 
-        {game.status !== "playing" && (
+        {game.status !== "playing" && game.status !== "finished" && (
           <>
             <h2>Maze Tools</h2>
             <div className="tool-grid">
@@ -259,46 +255,74 @@ export default function HostPage({ params }) {
       </section>
 
       <section className="maze-stage">
-        <div className="maze-wrap">
+        {hideHostMaze ? (
           <div
-            className="maze-grid editor"
-            style={{ gridTemplateColumns: `repeat(${SIZE}, 1fr)` }}
-            onMouseLeave={() => setPainting(false)}
+            style={{
+              minHeight: "70vh",
+              borderRadius: "16px",
+              background: "#64748b",
+              display: "grid",
+              placeItems: "center",
+              padding: "32px",
+              textAlign: "center",
+              color: "white"
+            }}
           >
-            {game.maze.flatMap((row, y) =>
-              row.map((cell, x) => {
-                const isStart = game.start_pos?.x === x && game.start_pos?.y === y;
-                const isFinish = game.finish_pos?.x === x && game.finish_pos?.y === y;
-                const cls = [
-                  "cell",
-                  cell === 1 ? "wall" : "path",
-                  isStart ? "start" : "",
-                  isFinish ? "finish" : ""
-                ].join(" ");
-
-                return (
-                  <div
-                    key={`${x}-${y}`}
-                    className={cls}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      setPainting(true);
-                      paintCell(x, y);
-                    }}
-                    onMouseEnter={() => painting && paintCell(x, y)}
-                    onMouseUp={() => setPainting(false)}
-                  />
-                );
-              })
-            )}
+            <div>
+              <div style={{ fontSize: "4rem", marginBottom: "12px" }}>🔒</div>
+              <h2 style={{ fontSize: "2rem", margin: "0 0 12px" }}>
+                Maze Hidden During Race
+              </h2>
+              <p style={{ fontSize: "1.1rem", maxWidth: "520px", margin: "0 auto" }}>
+                The full maze is covered so players cannot look at the host screen.
+                Reset the game after the race to reveal the maze again.
+              </p>
+            </div>
           </div>
-        </div>
+        ) : (
+          <>
+            <div className="maze-wrap">
+              <div
+                className="maze-grid editor"
+                style={{ gridTemplateColumns: `repeat(${SIZE}, 1fr)` }}
+                onMouseLeave={() => setPainting(false)}
+              >
+                {game.maze.flatMap((row, y) =>
+                  row.map((cell, x) => {
+                    const isStart = game.start_pos?.x === x && game.start_pos?.y === y;
+                    const isFinish = game.finish_pos?.x === x && game.finish_pos?.y === y;
+                    const cls = [
+                      "cell",
+                      cell === 1 ? "wall" : "path",
+                      isStart ? "start" : "",
+                      isFinish ? "finish" : ""
+                    ].join(" ");
 
-        <div className="legend">
-          <span>Click or drag to paint.</span>
-          <span>Green = start</span>
-          <span>Gold = finish</span>
-        </div>
+                    return (
+                      <div
+                        key={`${x}-${y}`}
+                        className={cls}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setPainting(true);
+                          paintCell(x, y);
+                        }}
+                        onMouseEnter={() => painting && paintCell(x, y)}
+                        onMouseUp={() => setPainting(false)}
+                      />
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            <div className="legend">
+              <span>Click or drag to paint.</span>
+              <span>Green = start</span>
+              <span>Gold = finish</span>
+            </div>
+          </>
+        )}
       </section>
     </main>
   );
