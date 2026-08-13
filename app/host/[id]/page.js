@@ -56,7 +56,7 @@ export default function HostPage({ params }) {
   }
 
   function paintCell(x, y) {
-    if (!game || game.status === "playing") return;
+    if (!game || game.status !== "editing") return;
 
     if (tool === "start") {
       const next = { ...game, start_pos: { x, y } };
@@ -85,7 +85,7 @@ export default function HostPage({ params }) {
     }
 
     await supabase.from("games").update({ status: "waiting" }).eq("id", id);
-    setMessage("Waiting room is open.");
+    setMessage("Waiting room is open. The maze is now hidden.");
   }
 
   async function startGame() {
@@ -118,7 +118,7 @@ export default function HostPage({ params }) {
       })
       .eq("id", id);
 
-    setMessage("Race started! The host maze is now hidden.");
+    setMessage("Race started!");
   }
 
   async function kickPlayer(playerId) {
@@ -133,8 +133,26 @@ export default function HostPage({ params }) {
     setMessage("Player removed. They can rejoin.");
   }
 
+  async function kickAllPlayers() {
+    if (!players.length) {
+      setMessage("There are no players to kick.");
+      return;
+    }
+
+    const { error } = await supabase.from("players").delete().eq("game_id", id);
+
+    if (error) {
+      setMessage(`Could not kick all players: ${error.message}`);
+      return;
+    }
+
+    await loadPlayers();
+    setMessage("All players were removed. They can rejoin.");
+  }
+
   async function resetGame() {
     await supabase.from("players").delete().eq("game_id", id);
+
     await supabase
       .from("games")
       .update({
@@ -164,7 +182,10 @@ export default function HostPage({ params }) {
 
   if (!game) return <main className="page-shell"><p>Loading...</p></main>;
 
-  const hideHostMaze = game.status === "playing" || game.status === "finished";
+  const hideHostMaze =
+    game.status === "waiting" ||
+    game.status === "playing" ||
+    game.status === "finished";
 
   return (
     <main className="host-layout">
@@ -180,7 +201,7 @@ export default function HostPage({ params }) {
           Status: <b>{game.status}</b>
         </p>
 
-        {game.status !== "playing" && game.status !== "finished" && (
+        {game.status === "editing" && (
           <>
             <h2>Maze Tools</h2>
             <div className="tool-grid">
@@ -223,15 +244,26 @@ export default function HostPage({ params }) {
 
         {message && <p className="message">{message}</p>}
 
-        <h2>Players ({players.length}/25)</h2>
-        <div className="player-list">
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+          <h2 style={{ margin: 0 }}>Players ({players.length}/25)</h2>
+
+          {game.status === "waiting" && players.length > 0 && (
+            <button className="danger small" onClick={kickAllPlayers}>
+              Kick All
+            </button>
+          )}
+        </div>
+
+        <div className="player-list" style={{ marginTop: "8px" }}>
           {!players.length && <p className="muted">No players yet.</p>}
+
           {players.map((p) => (
             <div className="player-row" key={p.id}>
               <span>
                 {p.place ? `${p.place}. ` : ""}
                 {p.name}
               </span>
+
               {game.status === "waiting" && (
                 <button className="danger small" onClick={() => kickPlayer(p.id)}>
                   Kick
@@ -271,11 +303,11 @@ export default function HostPage({ params }) {
             <div>
               <div style={{ fontSize: "4rem", marginBottom: "12px" }}>🔒</div>
               <h2 style={{ fontSize: "2rem", margin: "0 0 12px" }}>
-                Maze Hidden During Race
+                Maze Hidden
               </h2>
               <p style={{ fontSize: "1.1rem", maxWidth: "520px", margin: "0 auto" }}>
-                The full maze is covered so players cannot look at the host screen.
-                Reset the game after the race to reveal the maze again.
+                The full maze stays hidden from the moment the waiting room opens
+                until the game is reset.
               </p>
             </div>
           </div>
@@ -289,8 +321,11 @@ export default function HostPage({ params }) {
               >
                 {game.maze.flatMap((row, y) =>
                   row.map((cell, x) => {
-                    const isStart = game.start_pos?.x === x && game.start_pos?.y === y;
-                    const isFinish = game.finish_pos?.x === x && game.finish_pos?.y === y;
+                    const isStart =
+                      game.start_pos?.x === x && game.start_pos?.y === y;
+                    const isFinish =
+                      game.finish_pos?.x === x && game.finish_pos?.y === y;
+
                     const cls = [
                       "cell",
                       cell === 1 ? "wall" : "path",
