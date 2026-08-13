@@ -122,7 +122,26 @@ export default function HostPage({ params }) {
   }
 
   async function kickPlayer(playerId) {
-    await supabase.from("players").delete().eq("id", playerId);
+    setMessage("");
+
+    const { data, error } = await supabase
+      .from("players")
+      .delete()
+      .eq("id", playerId)
+      .select("id");
+
+    if (error) {
+      setMessage(`Could not kick player: ${error.message}`);
+      return;
+    }
+
+    if (!data?.length) {
+      setMessage("The player could not be removed. Check the Supabase delete policy.");
+      return;
+    }
+
+    await loadPlayers();
+    setMessage("Player removed. They can rejoin with the game code.");
   }
 
   async function resetGame() {
