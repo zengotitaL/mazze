@@ -11,11 +11,19 @@ export default function HostPage({ params }) {
   const [tool, setTool] = useState("wall");
   const [painting, setPainting] = useState(false);
   const [message, setMessage] = useState("");
+  const [playerLink, setPlayerLink] = useState("");
   const saveTimer = useRef(null);
 
   useEffect(() => {
     load();
+  }, [id]);
 
+  useEffect(() => {
+    if (!game?.code || typeof window === "undefined") return;
+    setPlayerLink(`${window.location.origin}/play/${game.code}`);
+  }, [game?.code]);
+
+  useEffect(() => {
     const channel = supabase
       .channel(`host-${id}`)
       .on(
@@ -45,6 +53,7 @@ export default function HostPage({ params }) {
       .select("*")
       .eq("game_id", id)
       .order("joined_at");
+
     setPlayers(data || []);
   }
 
@@ -76,6 +85,17 @@ export default function HostPage({ params }) {
     nextMaze[y][x] = tool === "wall" ? 1 : 0;
     setGame({ ...game, maze: nextMaze });
     queueSave(nextMaze);
+  }
+
+  async function copyPlayerLink() {
+    if (!playerLink) return;
+
+    try {
+      await navigator.clipboard.writeText(playerLink);
+      setMessage("Player link copied! Students can open it and just enter their name.");
+    } catch {
+      setMessage("Could not copy automatically. Select and copy the player link shown below.");
+    }
   }
 
   async function openWaitingRoom() {
@@ -197,6 +217,28 @@ export default function HostPage({ params }) {
           <strong>{game.code}</strong>
         </div>
 
+        <div style={{ display: "grid", gap: "8px", marginBottom: "14px" }}>
+          <button className="secondary full" onClick={copyPlayerLink}>
+            Copy Player Link
+          </button>
+
+          {playerLink && (
+            <div
+              style={{
+                background: "#f8fafc",
+                border: "1px solid #cbd5e1",
+                borderRadius: "10px",
+                padding: "9px",
+                fontSize: ".8rem",
+                overflowWrap: "anywhere",
+                color: "#475569"
+              }}
+            >
+              {playerLink}
+            </div>
+          )}
+        </div>
+
         <p className="status">
           Status: <b>{game.status}</b>
         </p>
@@ -244,7 +286,14 @@ export default function HostPage({ params }) {
 
         {message && <p className="message">{message}</p>}
 
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "8px"
+          }}
+        >
           <h2 style={{ margin: 0 }}>Players ({players.length}/25)</h2>
 
           {game.status === "waiting" && players.length > 0 && (
