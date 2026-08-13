@@ -11,7 +11,13 @@ export default function PlayPage({ params }) {
   const [players, setPlayers] = useState([]);
   const [name, setName] = useState("");
   const [error, setError] = useState("");
+  const [revealed, setRevealed] = useState(new Set());
   const joining = useRef(false);
+  const playerRef = useRef(null);
+
+  useEffect(() => {
+    playerRef.current = player;
+  }, [player]);
 
   useEffect(() => {
     const saved = sessionStorage.getItem("maze-player-name") || "";
@@ -41,6 +47,37 @@ export default function PlayPage({ params }) {
 
     return () => supabase.removeChannel(channel);
   }, [game?.id]);
+
+  // A reliable backup check for kicks. Realtime is fast when available,
+  // but this also removes a kicked player within a couple of seconds.
+  useEffect(() => {
+    if (!game || !player) return;
+
+    const timer = setInterval(async () => {
+      const current = playerRef.current;
+      if (!current) return;
+
+      const { data } = await supabase
+        .from("players")
+        .select("*")
+        .eq("id", current.id)
+        .eq("game_id", game.id)
+        .maybeSingle();
+
+      if (!data) {
+        handleRemovedPlayer();
+      } else {
+        setPlayer(data);
+      }
+    }, 2000);
+
+    return () => clearInterval(timer);
+  }, [game?.id, player?.id]);
+
+  useEffect(() => {
+    if (!player || !game || game.status !== "playing") return;
+    revealAround(player.x, player.y, true);
+  }, [game?.started_at, game?.status, player?.id]);
 
   useEffect(() => {
     if (!player || !game) return;
@@ -72,6 +109,35 @@ export default function PlayPage({ params }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [player, game]);
 
+  function revealAround(x, y, reset = false) {
+    setRevealed((previous) => {
+      const next = reset ? new Set() : new Set(previous);
+
+      // Reveal exactly one square in every direction: a 3 x 3 area.
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const rx = x + dx;
+          const ry = y + dy;
+          if (rx >= 0 && rx < SIZE && ry >= 0 && ry < SIZE) {
+            next.add(`${rx},${ry}`);
+          }
+        }
+      }
+
+      return next;
+    });
+  }
+
+  function handleRemovedPlayer() {
+    if (!game) return;
+    localStorage.removeItem(`maze-player-${game.id}`);
+    localStorage.removeItem(`maze-player-token-${game.id}`);
+    playerRef.current = null;
+    setPlayer(null);
+    setRevealed(new Set());
+    setError("You were removed from the waiting room. You can enter your name and rejoin.");
+  }
+
   async function loadGame() {
     const { data, error } = await supabase
       .from("games")
@@ -96,7 +162,12 @@ export default function PlayPage({ params }) {
         .eq("game_id", data.id)
         .maybeSingle();
 
-      if (existing) setPlayer(existing);
+      if (existing) {
+        setPlayer(existing);
+      } else {
+        localStorage.removeItem(`maze-player-${data.id}`);
+        localStorage.removeItem(`maze-player-token-${data.id}`);
+      }
     }
   }
 
@@ -107,12 +178,17 @@ export default function PlayPage({ params }) {
       .eq("game_id", gameId)
       .order("joined_at");
 
-    setPlayers(data || []);
+    const list = data || [];
+    setPlayers(list);
 
-    if (player) {
-      const updated = (data || []).find((p) => p.id === player.id);
-      if (updated) setPlayer(updated);
-      else setPlayer(null);
+    const current = playerRef.current;
+    if (current) {
+      const updated = list.find((p) => p.id === current.id);
+      if (updated) {
+        setPlayer(updated);
+      } else {
+        handleRemovedPlayer();
+      }
     }
   }
 
@@ -154,6 +230,7 @@ export default function PlayPage({ params }) {
       localStorage.setItem(`maze-player-${game.id}`, data.id);
       localStorage.setItem(`maze-player-token-${game.id}`, token);
       setPlayer(data);
+      playerRef.current = data;
       loadPlayers(game.id);
     } catch (e) {
       setError(e.message);
@@ -172,11 +249,18 @@ export default function PlayPage({ params }) {
 
     const nextPlayer = { ...player, x: nx, y: ny };
     setPlayer(nextPlayer);
+    playerRef.current = nextPlayer;
+    revealAround(nx, ny);
 
-    await supabase
+    const { error } = await supabase
       .from("players")
       .update({ x: nx, y: ny })
       .eq("id", player.id);
+
+    if (error) {
+      setError("Your move could not be saved. Try again.");
+      return;
+    }
 
     if (nx === game.finish_pos.x && ny === game.finish_pos.y) {
       await finishRace();
@@ -332,18 +416,24 @@ export default function PlayPage({ params }) {
 
       <section className="player-maze-wrap">
         <div
-          className="maze-grid player-maze"
+          className="maze-grid player-maze fog-maze"
           style={{ gridTemplateColumns: `repeat(${SIZE}, 1fr)` }}
         >
           {game.maze.flatMap((row, y) =>
             row.map((cell, x) => {
+              const key = `${x},${y}`;
+              const isRevealed = revealed.has(key);
               const isStart = game.start_pos?.x === x && game.start_pos?.y === y;
               const isFinish = game.finish_pos?.x === x && game.finish_pos?.y === y;
               const isMe = player.x === x && player.y === y;
 
+              if (!isRevealed) {
+                return <div key={key} className="cell fog" />;
+              }
+
               return (
                 <div
-                  key={`${x}-${y}`}
+                  key={key}
                   className={[
                     "cell",
                     cell === 1 ? "wall" : "path",
@@ -365,7 +455,7 @@ export default function PlayPage({ params }) {
           <button onClick={() => move(0, 1)}>▼</button>
           <button onClick={() => move(1, 0)}>▶</button>
         </div>
-        <p>Arrow keys or WASD also work.</p>
+        <p>You reveal a 3 × 3 area as you move. Arrow keys or WASD also work.</p>
       </section>
     </main>
   );
